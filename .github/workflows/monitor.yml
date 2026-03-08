@@ -1,0 +1,41 @@
+name: Plant Monitor
+
+on:
+  schedule:
+    - cron: '0 13 * * *'  # 8:00 AM ET (UTC-5) — adjust for daylight saving if needed
+  workflow_dispatch:        # Allows manual trigger from the Actions tab
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write       # Needed to commit known_products.json back to the repo
+
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run plant monitor
+        run: python main.py
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+          EMAIL_TO: ${{ secrets.EMAIL_TO }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+          FILTERS_ENABLED: 'false'
+
+      - name: Commit updated product state
+        run: |
+          git config user.name "plant-monitor-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add known_products.json
+          git diff --staged --quiet || git commit -m "chore: update known products [skip ci]"
+          git push
