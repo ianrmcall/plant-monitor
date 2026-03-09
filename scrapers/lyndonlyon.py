@@ -26,18 +26,25 @@ class LyndonLyonScraper(BaseScraper):
         products = []
         seen_ids = set()
         for category, cpath in CATEGORY_PATHS.items():
-            try:
-                url = f"{BASE}/index.php"
-                soup = BeautifulSoup(
-                    self.get(url, params={"main_page": "index", "cPath": cpath}, verify=False).text,
-                    "html.parser",
-                )
-                for p in self._parse_listing(soup):
-                    if p["id"] not in seen_ids:
-                        seen_ids.add(p["id"])
-                        products.append(p)
-            except Exception as e:
-                print(f"[lyndonlyon] Error scraping cPath={cpath}: {e}")
+            page = 1
+            while True:
+                try:
+                    url = f"{BASE}/index.php"
+                    soup = BeautifulSoup(
+                        self.get(url, params={"main_page": "index", "cPath": cpath, "page": page}, verify=False).text,
+                        "html.parser",
+                    )
+                    page_products = self._parse_listing(soup)
+                    if not page_products:
+                        break  # No more pages
+                    for p in page_products:
+                        if p["id"] not in seen_ids:
+                            seen_ids.add(p["id"])
+                            products.append(p)
+                    page += 1
+                except Exception as e:
+                    print(f"[lyndonlyon] Error scraping cPath={cpath} page={page}: {e}")
+                    break
         return products
 
     def _parse_listing(self, soup: BeautifulSoup) -> list[dict]:
