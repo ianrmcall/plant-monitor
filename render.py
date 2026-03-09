@@ -12,13 +12,14 @@ OUTPUT_FILE = os.path.join(os.path.dirname(__file__), "index.html")
 
 
 def _card(product: dict) -> str:
+    genus = product["name"].split()[0]
     img_html = (
         f'<img src="{product["image_url"]}" alt="{product["name"]}">'
         if product.get("image_url")
         else '<div class="no-image">No image</div>'
     )
     return f"""
-    <div class="card">
+    <div class="card" data-genus="{genus}">
       <div class="card-img">{img_html}</div>
       <div class="card-body">
         <h3>{product["name"]}</h3>
@@ -149,6 +150,21 @@ def render() -> None:
     }}
     .card-body a:hover {{ background: #1b5e20; }}
     .empty {{ color: #777; margin-top: 32px; }}
+    .toggle-btn {{
+      background: #e8f5e9;
+      border: 2px solid #2e7d32;
+      color: #2e7d32;
+      padding: 6px 16px;
+      border-radius: 20px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.9rem;
+      transition: background 0.15s, color 0.15s;
+    }}
+    .toggle-btn.active {{
+      background: #2e7d32;
+      color: #fff;
+    }}
     footer {{
       max-width: 900px;
       margin: 48px auto 0;
@@ -163,11 +179,34 @@ def render() -> None:
   <header>
     <h1>🌿 Rare Plant Monitor</h1>
     <span class="meta">Updated {updated} &middot; {len(in_stock)} plant(s) in stock</span>
+    <button id="nicos-corner" class="toggle-btn" aria-pressed="false">🌿 Nico's Corner</button>
   </header>
   <main>{sections}</main>
   <footer>
     Monitored sites: ecuagenera.com, ecuageneraus.com, kartuz.com, andysorchids.com, lyndonlyon.com
   </footer>
+  <script>
+    const AROID_GENERA = new Set([
+      "Aglaonema","Alocasia","Amorphophallus","Anthurium","Caladium","Colocasia",
+      "Dieffenbachia","Epipremnum","Monstera","Philodendron","Pothos","Rhaphidophora",
+      "Scindapsus","Spathiphyllum","Syngonium","Xanthosoma","Zamioculcas"
+    ]);
+    const btn = document.getElementById('nicos-corner');
+    btn.addEventListener('click', () => {{
+      const active = btn.classList.toggle('active');
+      btn.setAttribute('aria-pressed', active);
+      document.querySelectorAll('.card').forEach(card => {{
+        card.style.display = (!active || AROID_GENERA.has(card.dataset.genus)) ? '' : 'none';
+      }});
+      document.querySelectorAll('section').forEach(section => {{
+        const cards = [...section.querySelectorAll('.card')];
+        const visible = cards.filter(c => c.style.display !== 'none').length;
+        section.style.display = visible === 0 ? 'none' : '';
+        const countEl = section.querySelector('.count');
+        if (countEl) countEl.textContent = '(' + visible + ')';
+      }});
+    }});
+  </script>
 </body>
 </html>
 """
