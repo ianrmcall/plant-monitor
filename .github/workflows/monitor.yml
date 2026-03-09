@@ -8,6 +8,7 @@ on:
 jobs:
   monitor:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: write       # Needed to commit known_products.json back to the repo
 
