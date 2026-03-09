@@ -20,7 +20,9 @@ class LyndonLyonScraper(BaseScraper):
     def scrape(self) -> list[dict]:
         products = []
         seen_ids = set()
-        for cpath in self._discover_leaf_cpaths():
+        leaf_cpaths = self._discover_leaf_cpaths()
+        for i, cpath in enumerate(leaf_cpaths, 1):
+            print(f"    [lyndonlyon] category {i}/{len(leaf_cpaths)}: cPath={cpath}")
             page = 1
             while True:
                 try:
@@ -38,7 +40,7 @@ class LyndonLyonScraper(BaseScraper):
                             products.append(p)
                     page += 1
                 except Exception as e:
-                    print(f"[lyndonlyon] Error scraping cPath={cpath} page={page}: {e}")
+                    print(f"    [lyndonlyon] Error scraping cPath={cpath} page={page}: {e}")
                     break
         return products
 
