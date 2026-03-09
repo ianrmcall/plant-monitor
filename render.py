@@ -22,7 +22,7 @@ def _parse_price(price_str: str) -> str:
     return "0"
 
 
-def _card(product: dict) -> str:
+def _card(product: dict, oos: bool = False) -> str:
     genus = product["name"].split()[0]
     family = _GENUS_TO_FAMILY.get(genus, "Unknown")
     price_numeric = _parse_price(product.get("price", ""))
@@ -31,8 +31,9 @@ def _card(product: dict) -> str:
         if product.get("image_url")
         else '<div class="no-image">No image</div>'
     )
+    oos_attr = ' data-oos="true"' if oos else ''
     return (
-        f'\n    <div class="card"'
+        f'\n    <div class="card"{oos_attr}'
         f' data-genus="{genus}"'
         f' data-site="{product["site"]}"'
         f' data-price="{price_numeric}"'
@@ -58,9 +59,13 @@ def render() -> None:
     in_stock = [p for p in all_products.values() if p.get("in_stock")]
     in_stock.sort(key=lambda p: (p["site"], p["name"]))
 
+    out_of_stock = [p for p in all_products.values() if not p.get("in_stock")]
+    out_of_stock.sort(key=lambda p: (p["site"], p["name"]))
+
     updated = datetime.now(timezone.utc).strftime("%B %d, %Y at %H:%M UTC")
 
     all_cards = "".join(_card(p) for p in in_stock)
+    all_cards += "".join(_card(p, oos=True) for p in out_of_stock)
 
     # Collect unique sites (sorted) to seed the JS site-checkbox list
     unique_sites = sorted({p["site"] for p in in_stock})
@@ -284,6 +289,25 @@ def render() -> None:
       font-weight: 700;
     }}
     .section-header .count {{ font-weight: normal; color: #777; font-size: 1rem; }}
+    .card[data-oos] {{
+      opacity: 0.55;
+      display: none;
+    }}
+    .card[data-oos] .card-body a {{
+      background: #aaa;
+      pointer-events: none;
+    }}
+    .card[data-oos]::after {{
+      content: "Out of Stock";
+      display: block;
+      text-align: center;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #888;
+      padding: 4px 0 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }}
   </style>
 </head>
 <body>
@@ -338,7 +362,8 @@ def render() -> None:
       </div>
     </div>
 
-    <div class="control-group" style="justify-content: flex-end;">
+    <div class="control-group" style="justify-content: flex-end; gap: 8px;">
+      <button id="show-oos" class="toggle-btn" aria-pressed="false">Show out of stock</button>
       <button id="clear-filters">Clear filters</button>
     </div>
   </div>
@@ -360,6 +385,7 @@ def render() -> None:
     // ── State ──────────────────────────────────────────────────────────────────
     const allCards = Array.from(document.querySelectorAll('#card-grid .card'));
     let sortAsc = true;
+    let showOos = false;
 
     // ── Build website checkboxes from actual data ───────────────────────────────
     const uniqueSites = [...new Set(allCards.map(c => c.dataset.site))].sort();
@@ -385,6 +411,15 @@ def render() -> None:
       applyFiltersAndSort();
     }});
 
+    // ── Show out of stock toggle ────────────────────────────────────────────────
+    document.getElementById('show-oos').addEventListener('click', () => {{
+      showOos = !showOos;
+      const btn = document.getElementById('show-oos');
+      btn.classList.toggle('active', showOos);
+      btn.setAttribute('aria-pressed', showOos);
+      applyFiltersAndSort();
+    }});
+
     // ── Clear filters ──────────────────────────────────────────────────────────
     document.getElementById('clear-filters').addEventListener('click', () => {{
       document.querySelectorAll('#site-checks input[type=checkbox]').forEach(cb => cb.checked = true);
@@ -400,6 +435,10 @@ def render() -> None:
       const ncBtn = document.getElementById('nicos-corner');
       ncBtn.classList.remove('active');
       ncBtn.setAttribute('aria-pressed', 'false');
+      // reset OOS toggle
+      showOos = false;
+      document.getElementById('show-oos').classList.remove('active');
+      document.getElementById('show-oos').setAttribute('aria-pressed', 'false');
       applyFiltersAndSort();
     }});
 
@@ -426,6 +465,7 @@ def render() -> None:
 
       // 1. Filter
       const visible = allCards.filter(card => {{
+        if (card.dataset.oos === 'true' && !showOos) return false;
         if (!checkedSites.has(card.dataset.site)) return false;
         if (genusQuery && !card.dataset.genus.toLowerCase().includes(genusQuery)) return false;
         if (familyFilter && card.dataset.family !== familyFilter) return false;
@@ -507,7 +547,8 @@ def render() -> None:
         container.appendChild(grid);
       }}
 
-      document.getElementById('visible-count').textContent = visible.length;
+      const inStockVisible = visible.filter(c => c.dataset.oos !== 'true').length;
+      document.getElementById('visible-count').textContent = inStockVisible;
     }}
 
     // ── Event listeners ────────────────────────────────────────────────────────
