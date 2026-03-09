@@ -1,0 +1,33 @@
+{
+  "colors": {
+    "primary":          "#2e7d32",
+    "primary-dark":     "#1b5e20",
+    "primary-light":    "#e8f5e9",
+    "border":           "#c8e6c9",
+    "text":             "#1a1a1a",
+    "text-muted":       "#777777",
+    "text-placeholder": "#aaaaaa",
+    "text-secondary":   "#555555",
+    "surface":          "#ffffff",
+    "bg-page":          "#f4f8f4",
+    "bg-input":         "#fafafa",
+    "border-input":     "#cccccc",
+    "border-card":      "#dddddd",
+    "border-footer":    "#e0e0e0",
+    "text-oos":         "#888888"
+  },
+  "typography": {
+    "font-family-base": "system-ui, sans-serif"
+  },
+  "layout": {
+    "max-width":       "900px",
+    "gap-card":        "16px",
+    "gap-controls":    "20px",
+    "card-img-height": "180px",
+    "card-min-width":  "240px",
+    "radius-card":     "10px",
+    "radius-btn":      "6px",
+    "radius-toggle":   "20px",
+    "radius-input":    "6px"
+  }
+}

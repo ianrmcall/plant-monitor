@@ -1,17 +1,92 @@
 """
 Generate a static index.html from the current known_products.json snapshot.
 Shows all in-stock plants grouped by site, with client-side filter and sort controls.
+
+Design tokens are read from design_tokens.json (committed defaults) and injected
+as CSS custom properties into the generated HTML. Run figma_sync.py first to pull
+updated values from a Figma file, then re-run this script.
 """
 
 import json
 import os
 import re
 from datetime import datetime, timezone
+from pathlib import Path
 
 from filters import _GENUS_TO_FAMILY
 
 PRODUCTS_FILE = os.path.join(os.path.dirname(__file__), "known_products.json")
 OUTPUT_FILE = os.path.join(os.path.dirname(__file__), "index.html")
+TOKENS_FILE = Path(__file__).parent / "design_tokens.json"
+
+_TOKEN_DEFAULTS: dict = {
+    "colors": {
+        "primary":          "#2e7d32",
+        "primary-dark":     "#1b5e20",
+        "primary-light":    "#e8f5e9",
+        "border":           "#c8e6c9",
+        "text":             "#1a1a1a",
+        "text-muted":       "#777777",
+        "text-placeholder": "#aaaaaa",
+        "text-secondary":   "#555555",
+        "surface":          "#ffffff",
+        "bg-page":          "#f4f8f4",
+        "bg-input":         "#fafafa",
+        "border-input":     "#cccccc",
+        "border-card":      "#dddddd",
+        "border-footer":    "#e0e0e0",
+        "text-oos":         "#888888",
+    },
+    "typography": {
+        "font-family-base": "system-ui, sans-serif",
+    },
+    "layout": {
+        "max-width":       "900px",
+        "gap-card":        "16px",
+        "gap-controls":    "20px",
+        "card-img-height": "180px",
+        "card-min-width":  "240px",
+        "radius-card":     "10px",
+        "radius-btn":      "6px",
+        "radius-toggle":   "20px",
+        "radius-input":    "6px",
+    },
+}
+
+
+def _load_tokens() -> dict:
+    """
+    Load design_tokens.json and merge with built-in defaults.
+    Values present in the file override defaults; missing keys fall back to defaults.
+    """
+    base: dict = {
+        "colors":     dict(_TOKEN_DEFAULTS["colors"]),
+        "typography": dict(_TOKEN_DEFAULTS["typography"]),
+        "layout":     dict(_TOKEN_DEFAULTS["layout"]),
+    }
+    if TOKENS_FILE.exists():
+        try:
+            with TOKENS_FILE.open() as f:
+                loaded = json.load(f)
+            base["colors"].update(loaded.get("colors", {}))
+            base["typography"].update(loaded.get("typography", {}))
+            base["layout"].update(loaded.get("layout", {}))
+        except json.JSONDecodeError as exc:
+            print(f"Warning: design_tokens.json is malformed ({exc}) — using defaults.")
+    else:
+        print("Warning: design_tokens.json not found — using built-in defaults.")
+    return base
+
+
+def _build_root_block(tokens: dict) -> str:
+    """Build a CSS :root { } block from the merged token set."""
+    lines = []
+    for name, value in tokens["colors"].items():
+        lines.append(f"    --{name}: {value};")
+    lines.append(f"    --font-family-base: {tokens['typography']['font-family-base']};")
+    for name, value in tokens["layout"].items():
+        lines.append(f"    --{name}: {value};")
+    return ":root {{\n" + "\n".join(lines) + "\n  }}"
 
 
 def _parse_price(price_str: str) -> str:
@@ -75,6 +150,9 @@ def render() -> None:
 
     genus_family_js = json.dumps(_GENUS_TO_FAMILY)
 
+    tokens = _load_tokens()
+    root_block = _build_root_block(tokens)
+
     html = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -82,36 +160,37 @@ def render() -> None:
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Rare Plant Monitor</title>
   <style>
+    {root_block}
     *, *::before, *::after {{ box-sizing: border-box; }}
     body {{
-      font-family: system-ui, sans-serif;
-      background: #f4f8f4;
-      color: #1a1a1a;
+      font-family: var(--font-family-base);
+      background: var(--bg-page);
+      color: var(--text);
       margin: 0;
       padding: 0 16px 48px;
     }}
     header {{
-      max-width: 900px;
+      max-width: var(--max-width);
       margin: 0 auto;
       padding: 32px 0 16px;
-      border-bottom: 2px solid #c8e6c9;
+      border-bottom: 2px solid var(--border);
       display: flex;
       align-items: baseline;
       gap: 16px;
       flex-wrap: wrap;
     }}
-    header h1 {{ margin: 0; color: #2e7d32; font-size: 1.8rem; }}
-    header .meta {{ font-size: 0.85rem; color: #777; }}
+    header h1 {{ margin: 0; color: var(--primary); font-size: 1.8rem; }}
+    header .meta {{ font-size: 0.85rem; color: var(--text-muted); }}
     #controls {{
-      max-width: 900px;
+      max-width: var(--max-width);
       margin: 20px auto 0;
       padding: 16px;
-      background: #fff;
-      border: 1px solid #c8e6c9;
-      border-radius: 10px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-card);
       display: flex;
       flex-wrap: wrap;
-      gap: 20px;
+      gap: var(--gap-controls);
       align-items: flex-start;
     }}
     .control-group {{
@@ -126,24 +205,24 @@ def render() -> None:
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.05em;
-      color: #555;
+      color: var(--text-secondary);
     }}
     .control-group input[type="text"],
     .control-group input[type="number"],
     .control-group select {{
-      border: 1px solid #ccc;
-      border-radius: 6px;
+      border: 1px solid var(--border-input);
+      border-radius: var(--radius-input);
       padding: 5px 8px;
       font-size: 0.9rem;
-      color: #1a1a1a;
-      background: #fafafa;
+      color: var(--text);
+      background: var(--bg-input);
       width: 100%;
     }}
     .control-group input[type="text"]:focus,
     .control-group input[type="number"]:focus,
     .control-group select:focus {{
-      outline: 2px solid #2e7d32;
-      border-color: #2e7d32;
+      outline: 2px solid var(--primary);
+      border-color: var(--primary);
     }}
     .price-range {{
       display: flex;
@@ -151,7 +230,7 @@ def render() -> None:
       align-items: center;
     }}
     .price-range input {{ width: 80px; }}
-    .price-range span {{ color: #777; font-size: 0.85rem; }}
+    .price-range span {{ color: var(--text-muted); font-size: 0.85rem; }}
     .site-checks {{
       display: flex;
       flex-direction: column;
@@ -165,7 +244,7 @@ def render() -> None:
       font-weight: normal;
       text-transform: none;
       letter-spacing: 0;
-      color: #1a1a1a;
+      color: var(--text);
       cursor: pointer;
     }}
     .sort-row {{
@@ -174,58 +253,58 @@ def render() -> None:
       align-items: center;
     }}
     #sort-dir {{
-      background: #e8f5e9;
-      border: 2px solid #2e7d32;
-      color: #2e7d32;
+      background: var(--primary-light);
+      border: 2px solid var(--primary);
+      color: var(--primary);
       padding: 5px 12px;
-      border-radius: 6px;
+      border-radius: var(--radius-btn);
       cursor: pointer;
       font-weight: 700;
       font-size: 0.9rem;
       white-space: nowrap;
     }}
-    #sort-dir.desc {{ background: #2e7d32; color: #fff; }}
+    #sort-dir.desc {{ background: var(--primary); color: var(--surface); }}
     #clear-filters {{
       background: none;
-      border: 1px solid #ccc;
-      color: #777;
+      border: 1px solid var(--border-input);
+      color: var(--text-muted);
       padding: 5px 12px;
-      border-radius: 6px;
+      border-radius: var(--radius-btn);
       cursor: pointer;
       font-size: 0.85rem;
     }}
-    #clear-filters:hover {{ border-color: #2e7d32; color: #2e7d32; }}
-    main {{ max-width: 900px; margin: 0 auto; }}
+    #clear-filters:hover {{ border-color: var(--primary); color: var(--primary); }}
+    main {{ max-width: var(--max-width); margin: 0 auto; }}
     section {{ margin-top: 40px; }}
-    h2 {{ color: #2e7d32; font-size: 1.25rem; margin-bottom: 16px; }}
-    .count {{ font-weight: normal; color: #777; font-size: 1rem; }}
+    h2 {{ color: var(--primary); font-size: 1.25rem; margin-bottom: 16px; }}
+    .count {{ font-weight: normal; color: var(--text-muted); font-size: 1rem; }}
     #card-grid {{
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-      gap: 16px;
+      grid-template-columns: repeat(auto-fill, minmax(var(--card-min-width), 1fr));
+      gap: var(--gap-card);
     }}
     .card {{
-      background: #fff;
-      border: 1px solid #ddd;
-      border-radius: 10px;
+      background: var(--surface);
+      border: 1px solid var(--border-card);
+      border-radius: var(--radius-card);
       overflow: hidden;
       display: flex;
       flex-direction: column;
     }}
     .card-img img {{
       width: 100%;
-      height: 180px;
+      height: var(--card-img-height);
       object-fit: cover;
       display: block;
     }}
     .no-image {{
       width: 100%;
-      height: 180px;
-      background: #e8f5e9;
+      height: var(--card-img-height);
+      background: var(--primary-light);
       display: flex;
       align-items: center;
       justify-content: center;
-      color: #aaa;
+      color: var(--text-placeholder);
       font-size: 0.9rem;
     }}
     .card-body {{
@@ -244,57 +323,57 @@ def render() -> None:
       margin: 0 0 12px;
       font-size: 1.1rem;
       font-weight: 700;
-      color: #2e7d32;
+      color: var(--primary);
     }}
     .card-body a {{
       display: inline-block;
-      background: #2e7d32;
-      color: #fff;
+      background: var(--primary);
+      color: var(--surface);
       padding: 7px 14px;
-      border-radius: 6px;
+      border-radius: var(--radius-btn);
       text-decoration: none;
       font-size: 0.85rem;
       font-weight: 600;
       text-align: center;
     }}
-    .card-body a:hover {{ background: #1b5e20; }}
-    .empty {{ color: #777; margin-top: 32px; }}
+    .card-body a:hover {{ background: var(--primary-dark); }}
+    .empty {{ color: var(--text-muted); margin-top: 32px; }}
     .toggle-btn {{
-      background: #e8f5e9;
-      border: 2px solid #2e7d32;
-      color: #2e7d32;
+      background: var(--primary-light);
+      border: 2px solid var(--primary);
+      color: var(--primary);
       padding: 6px 16px;
-      border-radius: 20px;
+      border-radius: var(--radius-toggle);
       cursor: pointer;
       font-weight: 600;
       font-size: 0.9rem;
       transition: background 0.15s, color 0.15s;
     }}
     .toggle-btn.active {{
-      background: #2e7d32;
-      color: #fff;
+      background: var(--primary);
+      color: var(--surface);
     }}
     footer {{
-      max-width: 900px;
+      max-width: var(--max-width);
       margin: 48px auto 0;
       font-size: 0.8rem;
-      color: #aaa;
-      border-top: 1px solid #e0e0e0;
+      color: var(--text-placeholder);
+      border-top: 1px solid var(--border-footer);
       padding-top: 16px;
     }}
     .section-header {{
-      color: #2e7d32;
+      color: var(--primary);
       font-size: 1.25rem;
       margin: 40px 0 16px;
       font-weight: 700;
     }}
-    .section-header .count {{ font-weight: normal; color: #777; font-size: 1rem; }}
+    .section-header .count {{ font-weight: normal; color: var(--text-muted); font-size: 1rem; }}
     .card[data-oos] {{
       opacity: 0.55;
       display: none;
     }}
     .card[data-oos] .card-body a {{
-      background: #aaa;
+      background: var(--text-placeholder);
       pointer-events: none;
     }}
     .card[data-oos]::after {{
@@ -303,7 +382,7 @@ def render() -> None:
       text-align: center;
       font-size: 0.75rem;
       font-weight: 700;
-      color: #888;
+      color: var(--text-oos);
       padding: 4px 0 8px;
       text-transform: uppercase;
       letter-spacing: 0.05em;
@@ -535,14 +614,14 @@ def render() -> None:
           container.appendChild(h);
           const grid = document.createElement('div');
           grid.className = 'grid';
-          grid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px;margin-bottom:8px';
+          grid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(var(--card-min-width),1fr));gap:var(--gap-card);margin-bottom:8px';
           siteCards.forEach(c => grid.appendChild(c));
           container.appendChild(grid);
         }});
       }} else {{
         const grid = document.createElement('div');
         grid.className = 'grid';
-        grid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px;margin-top:32px';
+        grid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(var(--card-min-width),1fr));gap:var(--gap-card);margin-top:32px';
         visible.forEach(c => grid.appendChild(c));
         container.appendChild(grid);
       }}
