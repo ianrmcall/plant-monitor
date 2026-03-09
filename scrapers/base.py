@@ -13,6 +13,7 @@ HEADERS = {
 
 class BaseScraper(ABC):
     site: str  # short identifier, e.g. "ecuagenera"
+    timeout: int = 120  # per-scraper timeout in seconds; override in subclass if needed
 
     def get(self, url: str, **kwargs) -> requests.Response:
         resp = requests.get(url, headers=HEADERS, timeout=15, **kwargs)

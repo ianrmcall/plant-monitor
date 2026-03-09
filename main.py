@@ -26,7 +26,6 @@ def main(dry_run: bool = False) -> None:
     print(f"  Loaded {len(known)} known products from state file.\n")
 
     # 2. Scrape all sites
-    SCRAPER_TIMEOUT = 120  # seconds per scraper
     current: dict = {}
     for scraper in SCRAPERS:
         print(f"  Scraping {scraper.site}...")
@@ -34,9 +33,9 @@ def main(dry_run: bool = False) -> None:
             with ThreadPoolExecutor(max_workers=1) as executor:
                 future = executor.submit(scraper.scrape)
                 try:
-                    products = future.result(timeout=SCRAPER_TIMEOUT)
+                    products = future.result(timeout=scraper.timeout)
                 except FuturesTimeoutError:
-                    print(f"    ✗ Timed out after {SCRAPER_TIMEOUT}s")
+                    print(f"    ✗ Timed out after {scraper.timeout}s")
                     products = []
             for p in products:
                 current[p["id"]] = p

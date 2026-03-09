@@ -10,6 +10,7 @@ BASE = "https://andysorchids.com"
 
 class AndysOrchidsScraper(BaseScraper):
     site = "andysorchids"
+    timeout = 600  # many genera + 0.4s sleep each; needs more time
 
     def scrape(self) -> list[dict]:
         genera = self._get_genera()
