@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rare Plant Monitor</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      font-family: system-ui, sans-serif;
+      background: #f4f8f4;
+      color: #1a1a1a;
+      margin: 0;
+      padding: 0 16px 48px;
+    }
+    header {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 32px 0 16px;
+      border-bottom: 2px solid #c8e6c9;
+      display: flex;
+      align-items: baseline;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    header h1 { margin: 0; color: #2e7d32; font-size: 1.8rem; }
+    header .meta { font-size: 0.85rem; color: #777; }
+    #controls {
+      max-width: 900px;
+      margin: 20px auto 0;
+      padding: 16px;
+      background: #fff;
+      border: 1px solid #c8e6c9;
+      border-radius: 10px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      align-items: flex-start;
+    }
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-width: 140px;
+    }
+    .control-group label,
+    .control-group .group-label {
+      font-size: 0.78rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #555;
+    }
+    .control-group input[type="text"],
+    .control-group input[type="number"],
+    .control-group select {
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      padding: 5px 8px;
+      font-size: 0.9rem;
+      color: #1a1a1a;
+      background: #fafafa;
+      width: 100%;
+    }
+    .control-group input[type="text"]:focus,
+    .control-group input[type="number"]:focus,
+    .control-group select:focus {
+      outline: 2px solid #2e7d32;
+      border-color: #2e7d32;
+    }
+    .price-range { display: flex; gap: 6px; align-items: center; }
+    .price-range input { width: 80px; }
+    .price-range span { color: #777; font-size: 0.85rem; }
+    .site-checks { display: flex; flex-direction: column; gap: 4px; }
+    .site-checks label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.88rem;
+      font-weight: normal;
+      text-transform: none;
+      letter-spacing: 0;
+      color: #1a1a1a;
+      cursor: pointer;
+    }
+    .sort-row { display: flex; gap: 8px; align-items: center; }
+    #sort-dir {
+      background: #e8f5e9;
+      border: 2px solid #2e7d32;
+      color: #2e7d32;
+      padding: 5px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 700;
+      font-size: 0.9rem;
+      white-space: nowrap;
+    }
+    #sort-dir.desc { background: #2e7d32; color: #fff; }
+    #clear-filters {
+      background: none;
+      border: 1px solid #ccc;
+      color: #777;
+      padding: 5px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+    #clear-filters:hover { border-color: #2e7d32; color: #2e7d32; }
+    main { max-width: 900px; margin: 0 auto; }
+    .section-header {
+      color: #2e7d32;
+      font-size: 1.25rem;
+      margin: 40px 0 16px;
+      font-weight: 700;
+    }
+    .section-header .count { font-weight: normal; color: #777; font-size: 1rem; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 16px;
+      margin-bottom: 8px;
+    }
+    .card {
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .card.oos { opacity: 0.55; }
+    .card.oos .card-body a { background: #aaa; pointer-events: none; }
+    .card.oos::after {
+      content: "Out of Stock";
+      display: block;
+      text-align: center;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #888;
+      padding: 4px 0 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .card-img img {
+      width: 100%;
+      height: 180px;
+      object-fit: cover;
+      display: block;
+    }
+    .no-image {
+      width: 100%;
+      height: 180px;
+      background: #e8f5e9;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #aaa;
+      font-size: 0.9rem;
+    }
+    .card-body {
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+    }
+    .card-body h3 { margin: 0 0 6px; font-size: 0.95rem; line-height: 1.4; flex: 1; }
+    .price { margin: 0 0 12px; font-size: 1.1rem; font-weight: 700; color: #2e7d32; }
+    .card-body a {
+      display: inline-block;
+      background: #2e7d32;
+      color: #fff;
+      padding: 7px 14px;
+      border-radius: 6px;
+      text-decoration: none;
+      font-size: 0.85rem;
+      font-weight: 600;
+      text-align: center;
+    }
+    .card-body a:hover { background: #1b5e20; }
+    .toggle-btn {
+      background: #e8f5e9;
+      border: 2px solid #2e7d32;
+      color: #2e7d32;
+      padding: 6px 16px;
+      border-radius: 20px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+    .toggle-btn.active { background: #2e7d32; color: #fff; }
+    .empty { color: #777; margin-top: 32px; }
+    footer {
+      max-width: 900px;
+      margin: 48px auto 0;
+      font-size: 0.8rem;
+      color: #aaa;
+      border-top: 1px solid #e0e0e0;
+      padding-top: 16px;
+    }
+    #loading {
+      max-width: 900px;
+      margin: 60px auto;
+      text-align: center;
+      color: #2e7d32;
+      font-size: 1.1rem;
+    }
+    #loading .spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid #c8e6c9;
+      border-top-color: #2e7d32;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 16px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #error-msg {
+      max-width: 900px;
+      margin: 60px auto;
+      padding: 20px;
+      background: #fff3f3;
+      border: 1px solid #f5c6c6;
+      border-radius: 8px;
+      color: #c62828;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🌿 Rare Plant Monitor</h1>
+    <span class="meta">
+      <span id="updated-meta">Loading...</span> &middot;
+      <span id="visible-count">—</span> plant(s) in stock
+    </span>
+    <button id="nicos-corner" class="toggle-btn" aria-pressed="false">🌿 Nico's Corner</button>
+  </header>
+
+  <div id="controls" style="display:none">
+    <div class="control-group">
+      <span class="group-label">Website</span>
+      <div class="site-checks" id="site-checks"></div>
+    </div>
+    <div class="control-group">
+      <label for="genus-filter">Genus</label>
+      <input type="text" id="genus-filter" placeholder="e.g. Monstera" autocomplete="off">
+    </div>
+    <div class="control-group">
+      <label for="family-filter">Family</label>
+      <select id="family-filter">
+        <option value="">All families</option>
+        <option value="Araceae">Araceae</option>
+        <option value="Begoniaceae">Begoniaceae</option>
+        <option value="Bromeliaceae">Bromeliaceae</option>
+        <option value="Gesneriaceae">Gesneriaceae</option>
+        <option value="Orchidaceae">Orchidaceae</option>
+        <option value="Unknown">Unknown</option>
+      </select>
+    </div>
+    <div class="control-group">
+      <span class="group-label">Price</span>
+      <div class="price-range">
+        <input type="number" id="price-min" placeholder="Min" min="0" step="1">
+        <span>&ndash;</span>
+        <input type="number" id="price-max" placeholder="Max" min="0" step="1">
+      </div>
+    </div>
+    <div class="control-group">
+      <span class="group-label">Sort</span>
+      <div class="sort-row">
+        <select id="sort-by">
+          <option value="site-name">Website &amp; Name</option>
+          <option value="name">Name</option>
+          <option value="price">Price</option>
+          <option value="genus">Genus</option>
+          <option value="family">Family</option>
+        </select>
+        <button id="sort-dir" title="Toggle sort direction">↑ Asc</button>
+      </div>
+    </div>
+    <div class="control-group" style="justify-content: flex-end; gap: 8px;">
+      <button id="show-oos" class="toggle-btn" aria-pressed="false">Show out of stock</button>
+      <button id="clear-filters">Clear filters</button>
+    </div>
+  </div>
+
+  <div id="loading">
+    <div class="spinner"></div>
+    Loading plant data…
+  </div>
+  <div id="error-msg"></div>
+
+  <main>
+    <div id="card-container"></div>
+  </main>
+
+  <footer>
+    Monitored sites: ecuagenera.com, ecuageneraus.com, kartuz.com, andysorchids.com, lyndonlyon.com
+  </footer>
+
+  <script>
+    const GENUS_TO_FAMILY = {"Acanthophippium":"Orchidaceae","Acropera":"Orchidaceae","Ada":"Orchidaceae","Aerides":"Orchidaceae","Agapetes":"Orchidaceae","Anacheilium":"Orchidaceae","Angraecum":"Orchidaceae","Anguloa":"Orchidaceae","Appendicula":"Orchidaceae","Arachnis":"Orchidaceae","Arpophyllum":"Orchidaceae","Aspasia":"Orchidaceae","Barbosella":"Orchidaceae","Barkeria":"Orchidaceae","Bifrenaria":"Orchidaceae","Bletilla":"Orchidaceae","Bothriochilus":"Orchidaceae","Brachtia":"Orchidaceae","Brassavola":"Orchidaceae","Brassia":"Orchidaceae","Bulbophyllum":"Orchidaceae","Cadetia":"Orchidaceae","Calanthe":"Orchidaceae","Cattleya":"Orchidaceae","Ceratostylis":"Orchidaceae","Chelonistele":"Orchidaceae","Chondrorhyncha":"Orchidaceae","Cirrhopetalum":"Orchidaceae","Cischweinfia":"Orchidaceae","Cleisostoma":"Orchidaceae","Cochlioda":"Orchidaceae","Coelia":"Orchidaceae","Coelogyne":"Orchidaceae","Constantia":"Orchidaceae","Cryptophoranthus":"Orchidaceae","Cryptopus":"Orchidaceae","Cymbidium":"Orchidaceae","Cynorkis":"Orchidaceae","Cyrtochilum":"Orchidaceae","Dendrobium":"Orchidaceae","Dendrochilum":"Orchidaceae","Diplocaulobium":"Orchidaceae","Dracula":"Orchidaceae","Dryadella":"Orchidaceae","Elleanthus":"Orchidaceae","Encyclia":"Orchidaceae","Epidendrum":"Orchidaceae","Epigeneium":"Orchidaceae","Eria":"Orchidaceae","Gastrochilus":"Orchidaceae","Gomesa":"Orchidaceae","Gongora":"Orchidaceae","Holcoglossum":"Orchidaceae","Huntleya":"Orchidaceae","Isabelia":"Orchidaceae","Isochilus":"Orchidaceae","Jacquiniella":"Orchidaceae","Jumellea":"Orchidaceae","Kefersteinia":"Orchidaceae","Laelia":"Orchidaceae","Lemboglossum":"Orchidaceae","Lepanthes":"Orchidaceae","Leptotes":"Orchidaceae","Liparis":"Orchidaceae","Lockhartia":"Orchidaceae","Lycaste":"Orchidaceae","Malaxis":"Orchidaceae","Masdevallia":"Orchidaceae","Maxillaria":"Orchidaceae","Mediocalcar":"Orchidaceae","Megaclinium":"Orchidaceae","Mesospinidium":"Orchidaceae","Miltonia":"Orchidaceae","Miltonioides":"Orchidaceae","Miltoniopsis":"Orchidaceae","Myoxanthus":"Orchidaceae","Nanodes":"Orchidaceae","Neobenthamia":"Orchidaceae","Neofinetia":"Orchidaceae","Neolauchea":"Orchidaceae","Nidema":"Orchidaceae","Oberonia":"Orchidaceae","Octomeria":"Orchidaceae","Odontoglossum":"Orchidaceae","Oerstedella":"Orchidaceae","Oncidium":"Orchidaceae","Ornithocephalus":"Orchidaceae","Osmoglossum":"Orchidaceae","Paphinia":"Orchidaceae","Paphiopedilum":"Orchidaceae","Papilionanthe":"Orchidaceae","Pholidota":"Orchidaceae","Phymatidium":"Orchidaceae","Physosiphon":"Orchidaceae","Platystele":"Orchidaceae","Pleione":"Orchidaceae","Pleurothallis":"Orchidaceae","Plocoglottis":"Orchidaceae","Podochilus":"Orchidaceae","Polystachya":"Orchidaceae","Ponera":"Orchidaceae","Porroglossum":"Orchidaceae","Psychilis":"Orchidaceae","Racinaea":"Bromeliaceae","Reldia":"Orchidaceae","Restrepia":"Orchidaceae","Restrepiella":"Orchidaceae","Restrepiopsis":"Orchidaceae","Rodriguezia":"Orchidaceae","Rudolfiella":"Orchidaceae","Saccolabium":"Orchidaceae","Sarcochilus":"Orchidaceae","Scaphosepalum":"Orchidaceae","Scaphyglottis":"Orchidaceae","Schoenorchis":"Orchidaceae","Schomburgkia":"Orchidaceae","Scuticaria":"Orchidaceae","Sedirea":"Orchidaceae","Sigmatostalix":"Orchidaceae","Smitinandia":"Orchidaceae","Sobralia":"Orchidaceae","Sophronitelia":"Orchidaceae","Spathoglottis":"Orchidaceae","Sphyrospermum":"Orchidaceae","Spiranthes":"Orchidaceae","Stelis":"Orchidaceae","Stenia":"Orchidaceae","Stenoglottis":"Orchidaceae","Stereochilus":"Orchidaceae","Sunipia":"Orchidaceae","Symphyglossum":"Orchidaceae","Thelasis":"Orchidaceae","Thrixspermum":"Orchidaceae","Tolumnia":"Orchidaceae","Trichoceros":"Orchidaceae","Trichoglottis":"Orchidaceae","Trichosalpinx":"Orchidaceae","Trichotosia":"Orchidaceae","Trigonidium":"Orchidaceae","Trisetella":"Orchidaceae","Tuberolabium":"Orchidaceae","Vanda":"Orchidaceae","Zootrophion":"Orchidaceae","Zygopetalum":"Orchidaceae","Achimenes":"Gesneriaceae","Aeschynanthus":"Gesneriaceae","Alsobia":"Gesneriaceae","Chirita":"Gesneriaceae","Codonanthe":"Gesneriaceae","Codonatanthus":"Gesneriaceae","Columnea":"Gesneriaceae","Drymonia":"Gesneriaceae","Episcia":"Gesneriaceae","Kohleria":"Gesneriaceae","Nematanthus":"Gesneriaceae","Petrocosmea":"Gesneriaceae","Primulina":"Gesneriaceae","Saintpaulia":"Gesneriaceae","Sinningia":"Gesneriaceae","Streptocarpella":"Gesneriaceae","Streptocarpus":"Gesneriaceae","Aglaonema":"Araceae","Alocasia":"Araceae","Amorphophallus":"Araceae","Anthurium":"Araceae","Caladium":"Araceae","Colocasia":"Araceae","Dieffenbachia":"Araceae","Epipremnum":"Araceae","Monstera":"Araceae","Philodendron":"Araceae","Pothos":"Araceae","Rhaphidophora":"Araceae","Scindapsus":"Araceae","Spathiphyllum":"Araceae","Syngonium":"Araceae","Xanthosoma":"Araceae","Zamioculcas":"Araceae","Begonia":"Begoniaceae","Aechmea":"Bromeliaceae","Billbergia":"Bromeliaceae","Cryptanthus":"Bromeliaceae","Dyckia":"Bromeliaceae","Guzmania":"Bromeliaceae","Neoregelia":"Bromeliaceae","Nidularium":"Bromeliaceae","Pitcairnia":"Bromeliaceae","Puya":"Bromeliaceae","Tillandsia":"Bromeliaceae","Vriesea":"Bromeliaceae","Werauhia":"Bromeliaceae"};
+
+    // ── State ─────────────────────────────────────────────────────────────────
+    let allProducts = [];  // raw product objects
+    let sortAsc = true;
+    let showOos = false;
+
+    function parsePrice(str) {
+      const m = (str || '').replace(/,/g, '').match(/[\d]+(?:[.,]\d+)*/);
+      return m ? parseFloat(m[0]) : 0;
+    }
+
+    function getGenus(name) { return (name || '').split(/\s+/)[0]; }
+    function getFamily(genus) { return GENUS_TO_FAMILY[genus] || 'Unknown'; }
+
+    // ── Fetch data ────────────────────────────────────────────────────────────
+    async function loadData() {
+      try {
+        const resp = await fetch('known_products.json');
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const raw = await resp.json();
+        allProducts = Object.values(raw);
+
+        // Enrich with derived fields
+        allProducts.forEach(p => {
+          p._genus  = getGenus(p.name);
+          p._family = getFamily(p._genus);
+          p._price  = parsePrice(p.price);
+        });
+
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('controls').style.display = 'flex';
+
+        const inStockCount = allProducts.filter(p => p.in_stock).length;
+        const now = new Date().toLocaleString('en-US', { month: 'long', day: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZoneName: 'short' });
+        document.getElementById('updated-meta').textContent = `Loaded ${now}`;
+        document.getElementById('visible-count').textContent = inStockCount;
+
+        buildSiteCheckboxes();
+        applyFiltersAndSort();
+      } catch (err) {
+        document.getElementById('loading').style.display = 'none';
+        const el = document.getElementById('error-msg');
+        el.style.display = 'block';
+        el.textContent = `Failed to load known_products.json: ${err.message}. Make sure you're running a local server (see README or Makefile).`;
+      }
+    }
+
+    // ── Build site checkboxes ─────────────────────────────────────────────────
+    function buildSiteCheckboxes() {
+      const sites = [...new Set(allProducts.map(p => p.site))].sort();
+      const container = document.getElementById('site-checks');
+      container.innerHTML = '';
+      sites.forEach(site => {
+        const label = document.createElement('label');
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.value = site;
+        cb.checked = true;
+        cb.addEventListener('change', applyFiltersAndSort);
+        label.appendChild(cb);
+        label.appendChild(document.createTextNode(' ' + site.replace(/_/g, ' ')));
+        container.appendChild(label);
+      });
+    }
+
+    // ── Render a single card ──────────────────────────────────────────────────
+    function makeCard(p) {
+      const div = document.createElement('div');
+      div.className = 'card' + (p.in_stock ? '' : ' oos');
+
+      const imgHtml = p.image_url
+        ? `<img src="${p.image_url}" alt="${p.name}" loading="lazy">`
+        : '<div class="no-image">No image</div>';
+
+      div.innerHTML = `
+        <div class="card-img">${imgHtml}</div>
+        <div class="card-body">
+          <h3>${p.name}</h3>
+          <p class="price">${p.price || 'N/A'}</p>
+          <a href="${p.product_url}" target="_blank" rel="noopener">View &amp; Buy</a>
+        </div>`;
+      return div;
+    }
+
+    // ── Core filter + sort ────────────────────────────────────────────────────
+    function applyFiltersAndSort() {
+      const checkedSites = new Set(
+        [...document.querySelectorAll('#site-checks input:checked')].map(cb => cb.value)
+      );
+      const genusQuery  = document.getElementById('genus-filter').value.trim().toLowerCase();
+      const familyFilter = document.getElementById('family-filter').value;
+      const priceMin    = parseFloat(document.getElementById('price-min').value);
+      const priceMax    = parseFloat(document.getElementById('price-max').value);
+      const sortBy      = document.getElementById('sort-by').value;
+
+      // 1. Filter
+      let visible = allProducts.filter(p => {
+        if (!p.in_stock && !showOos) return false;
+        if (!checkedSites.has(p.site)) return false;
+        if (genusQuery && !p._genus.toLowerCase().includes(genusQuery)) return false;
+        if (familyFilter && p._family !== familyFilter) return false;
+        if (!isNaN(priceMin) && p._price < priceMin) return false;
+        if (!isNaN(priceMax) && p._price > priceMax) return false;
+        return true;
+      });
+
+      // 2. Sort
+      const dir = sortAsc ? 1 : -1;
+      visible.sort((a, b) => {
+        let va, vb;
+        switch (sortBy) {
+          case 'price':
+            return dir * (a._price - b._price);
+          case 'genus':
+            va = a._genus.toLowerCase(); vb = b._genus.toLowerCase(); break;
+          case 'family':
+            va = a._family.toLowerCase(); vb = b._family.toLowerCase(); break;
+          case 'name':
+            va = a.name.toLowerCase(); vb = b.name.toLowerCase(); break;
+          case 'site-name':
+          default:
+            va = a.site + '\x00' + a.name.toLowerCase();
+            vb = b.site + '\x00' + b.name.toLowerCase();
+        }
+        if (va < vb) return -dir;
+        if (va > vb) return dir;
+        return 0;
+      });
+
+      // 3. Render
+      const container = document.getElementById('card-container');
+      container.innerHTML = '';
+
+      if (visible.length === 0) {
+        container.innerHTML = '<p class="empty">No plants match the current filters.</p>';
+        document.getElementById('visible-count').textContent = '0';
+        return;
+      }
+
+      const groupBySite = (sortBy === 'site-name');
+
+      if (groupBySite) {
+        const groups = {};
+        visible.forEach(p => {
+          if (!groups[p.site]) groups[p.site] = [];
+          groups[p.site].push(p);
+        });
+        Object.keys(groups).sort().forEach(site => {
+          const h = document.createElement('h2');
+          h.className = 'section-header';
+          h.innerHTML = site.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) +
+            ` <span class="count">(${groups[site].length})</span>`;
+          container.appendChild(h);
+          const grid = document.createElement('div');
+          grid.className = 'grid';
+          groups[site].forEach(p => grid.appendChild(makeCard(p)));
+          container.appendChild(grid);
+        });
+      } else {
+        const grid = document.createElement('div');
+        grid.className = 'grid';
+        grid.style.marginTop = '32px';
+        visible.forEach(p => grid.appendChild(makeCard(p)));
+        container.appendChild(grid);
+      }
+
+      const inStockVisible = visible.filter(p => p.in_stock).length;
+      document.getElementById('visible-count').textContent = inStockVisible;
+    }
+
+    // ── Controls ──────────────────────────────────────────────────────────────
+    document.getElementById('sort-dir').addEventListener('click', () => {
+      sortAsc = !sortAsc;
+      const btn = document.getElementById('sort-dir');
+      btn.textContent = sortAsc ? '↑ Asc' : '↓ Desc';
+      btn.classList.toggle('desc', !sortAsc);
+      applyFiltersAndSort();
+    });
+
+    document.getElementById('show-oos').addEventListener('click', () => {
+      showOos = !showOos;
+      const btn = document.getElementById('show-oos');
+      btn.classList.toggle('active', showOos);
+      btn.setAttribute('aria-pressed', showOos);
+      applyFiltersAndSort();
+    });
+
+    document.getElementById('nicos-corner').addEventListener('click', () => {
+      const btn = document.getElementById('nicos-corner');
+      const active = btn.classList.toggle('active');
+      btn.setAttribute('aria-pressed', active);
+      document.getElementById('family-filter').value = active ? 'Araceae' : '';
+      applyFiltersAndSort();
+    });
+
+    document.getElementById('clear-filters').addEventListener('click', () => {
+      document.querySelectorAll('#site-checks input[type=checkbox]').forEach(cb => cb.checked = true);
+      document.getElementById('genus-filter').value = '';
+      document.getElementById('family-filter').value = '';
+      document.getElementById('price-min').value = '';
+      document.getElementById('price-max').value = '';
+      document.getElementById('sort-by').value = 'site-name';
+      sortAsc = true;
+      document.getElementById('sort-dir').textContent = '↑ Asc';
+      document.getElementById('sort-dir').classList.remove('desc');
+      showOos = false;
+      document.getElementById('show-oos').classList.remove('active');
+      document.getElementById('show-oos').setAttribute('aria-pressed', 'false');
+      document.getElementById('nicos-corner').classList.remove('active');
+      document.getElementById('nicos-corner').setAttribute('aria-pressed', 'false');
+      applyFiltersAndSort();
+    });
+
+    document.getElementById('genus-filter').addEventListener('input', applyFiltersAndSort);
+    document.getElementById('family-filter').addEventListener('change', () => {
+      const val = document.getElementById('family-filter').value;
+      const ncBtn = document.getElementById('nicos-corner');
+      const isAraceae = val === 'Araceae';
+      ncBtn.classList.toggle('active', isAraceae);
+      ncBtn.setAttribute('aria-pressed', isAraceae);
+      applyFiltersAndSort();
+    });
+    document.getElementById('price-min').addEventListener('input', applyFiltersAndSort);
+    document.getElementById('price-max').addEventListener('input', applyFiltersAndSort);
+    document.getElementById('sort-by').addEventListener('change', applyFiltersAndSort);
+
+    // ── Boot ──────────────────────────────────────────────────────────────────
+    loadData();
+  </script>
+</body>
+</html>
