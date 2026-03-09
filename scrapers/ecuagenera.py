@@ -10,6 +10,7 @@ class EcuageneraScraper(BaseScraper):
         products = []
         page = 1
         while True:
+            print(f"    [ecuagenera] page {page}...")
             data = self.get(
                 f"{DOMAIN}/products.json",
                 params={"limit": 250, "page": page},

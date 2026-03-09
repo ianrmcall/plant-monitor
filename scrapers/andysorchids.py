@@ -10,20 +10,22 @@ BASE = "https://andysorchids.com"
 
 class AndysOrchidsScraper(BaseScraper):
     site = "andysorchids"
+    timeout = 600  # many genera + 0.4s sleep each; needs more time
 
     def scrape(self) -> list[dict]:
         genera = self._get_genera()
         products = []
         seen_ids = set()
-        for genus in genera:
+        for i, genus in enumerate(genera, 1):
+            print(f"    [andysorchids] genus {i}/{len(genera)}: {genus}")
             try:
                 for p in self._scrape_genus(genus):
                     if p["id"] not in seen_ids:
                         seen_ids.add(p["id"])
                         products.append(p)
             except Exception as e:
-                print(f"[andysorchids] Error scraping genus '{genus}': {e}")
-            time.sleep(0.4)
+                print(f"    [andysorchids] Error scraping genus '{genus}': {e}")
+            time.sleep(0.1)
         return products
 
     def _get_genera(self) -> list[str]:

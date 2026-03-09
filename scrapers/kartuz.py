@@ -20,13 +20,14 @@ class KartuzScraper(BaseScraper):
 
     def scrape(self) -> list[dict]:
         products = []
-        for path in CATEGORY_PAGES:
+        for i, path in enumerate(CATEGORY_PAGES, 1):
             url = BASE + path
+            print(f"    [kartuz] category {i}/{len(CATEGORY_PAGES)}: {path}")
             try:
                 soup = BeautifulSoup(self.get(url).text, "html.parser")
                 products.extend(self._parse_category(soup, url))
             except Exception as e:
-                print(f"[kartuz] Error fetching {url}: {e}")
+                print(f"    [kartuz] Error fetching {url}: {e}")
         return products
 
     def _parse_category(self, soup: BeautifulSoup, page_url: str) -> list[dict]:
