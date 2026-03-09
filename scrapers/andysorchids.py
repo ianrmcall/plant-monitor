@@ -25,7 +25,7 @@ class AndysOrchidsScraper(BaseScraper):
                         products.append(p)
             except Exception as e:
                 print(f"    [andysorchids] Error scraping genus '{genus}': {e}")
-            time.sleep(0.4)
+            time.sleep(0.1)
         return products
 
     def _get_genera(self) -> list[str]:

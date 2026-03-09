@@ -30,13 +30,15 @@ def main(dry_run: bool = False) -> None:
     for scraper in SCRAPERS:
         print(f"  Scraping {scraper.site}...")
         try:
-            with ThreadPoolExecutor(max_workers=1) as executor:
-                future = executor.submit(scraper.scrape)
-                try:
-                    products = future.result(timeout=scraper.timeout)
-                except FuturesTimeoutError:
-                    print(f"    ✗ Timed out after {scraper.timeout}s")
-                    products = []
+            executor = ThreadPoolExecutor(max_workers=1)
+            future = executor.submit(scraper.scrape)
+            try:
+                products = future.result(timeout=scraper.timeout)
+            except FuturesTimeoutError:
+                print(f"    ✗ Timed out after {scraper.timeout}s")
+                products = []
+            finally:
+                executor.shutdown(wait=False)
             for p in products:
                 current[p["id"]] = p
             print(f"    → {len(products)} products found")
