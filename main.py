@@ -7,8 +7,7 @@ Usage:
 """
 
 import sys
-from concurrent.futures import ThreadPoolExecutor
-from concurrent.futures import TimeoutError as FuturesTimeoutError
+import threading
 
 import config
 import diff
@@ -30,15 +29,27 @@ def main(dry_run: bool = False) -> None:
     for scraper in SCRAPERS:
         print(f"  Scraping {scraper.site}...")
         try:
-            executor = ThreadPoolExecutor(max_workers=1)
-            future = executor.submit(scraper.scrape)
-            try:
-                products = future.result(timeout=scraper.timeout)
-            except FuturesTimeoutError:
+            result_holder: list = []
+            error_holder: list = []
+
+            def _run(s=scraper, r=result_holder, e=error_holder):
+                try:
+                    r.extend(s.scrape())
+                except Exception as exc:
+                    e.append(exc)
+
+            t = threading.Thread(target=_run, daemon=True)
+            t.start()
+            t.join(timeout=scraper.timeout)
+
+            if t.is_alive():
                 print(f"    ✗ Timed out after {scraper.timeout}s")
                 products = []
-            finally:
-                executor.shutdown(wait=False)
+            elif error_holder:
+                raise error_holder[0]
+            else:
+                products = result_holder
+
             for p in products:
                 current[p["id"]] = p
             print(f"    → {len(products)} products found")
